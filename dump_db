@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+# script to (re-)load moodle database <databasename> into moodlesql server
+# m.opitz@qmul.ac.uk | 2017-09-11
+
+echo "--------------------------------------------------------------------------"
+
+if [ $# -lt 1 ]
+  then
+    echo "====> ERROR! missing argument(s)! - aborting..."
+    echo "====> use: dump_db <databasename>"
+    echo "====> or : dump_db <databasename> <path/to/filename.sql>"
+    exit 1
+else
+    if [ $# -lt 2 ]
+    then
+	db_name=$1
+	file_name=$1.sql
+    else
+	db_name=$1
+	file_name=$2
+    fi
+fi
+
+echo "====> Dumping database '$db_name' to file '$file_name' - v. 1.1 "
+
+# check if database file exists and if so ask for permission to override
+if [ -f $file_name ]
+    then
+    echo "====> ATTENTION!! $file_name already exists - continuing will overwrite it..."
+    read -p "Is this what you want? [y/N]" doit
+    if [ "${doit:0:1}" != "y" ] && [ "${doit:0:1}" != "Y" ]
+        then
+        echo "====> OK, aborting..."
+        exit 1
+    fi
+fi
+
+start_time=`date +%s`
+
+# check if the database actually exists
+RESULT=`mysqlshow --user=root --password='R00tpass!' $db_name 2>/dev/null| grep -v Wildcard | grep -o $db_name`
+
+if [ "$RESULT" != "$db_name" ]
+    then
+    echo "====> ERROR! NO database with name '$db_name' could be found - aborting ...!"
+    exit 1
+fi
+
+mysqldump -uroot -p'R00tpass!' $db_name > $file_name 2>/dev/null
+
+echo "====> SUCCESS! Successfully dumped database '$db_name' to file '$file_name' after $((`date +%s` - start_time)) seconds!"
+echo " "
+
+

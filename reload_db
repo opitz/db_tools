@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+# script to (re-)load moodle database <databasename> into moodlesql server
+# m.opitz@qmul.ac.uk | 2017-09-19
+
+echo "--------------------------------------------------------------------------"
+
+if [ $# -eq 0 ]
+  then
+    echo "====> ERROR! missing database name! - aborting..."
+    echo "====> use: reload_db <database_name> (from local <database_name>.sql file)"
+    echo "====> or: reload_db <path/to/filename.sql> <database_name>"
+    exit 1
+fi
+
+if [ $# -gt 1 ]
+    then
+    file_name=$1
+    db_name=$2
+else
+    if [[ $1 == *".sql"* ]]
+        then
+        file_name=$1
+        db_name="$1" | sed -e "s/.sql$//"
+    else
+        file_name=$1.sql
+        db_name=$1
+    fi
+fi
+
+echo "====> Uploading file '$file_name' into database '$db_name' - v. 3.2 "
+
+# check if database file exists
+if [ ! -f $file_name ]
+    then
+    echo "====> ERROR! $file_name cannot be found - aborting..."
+    exit 1
+fi
+
+if [ "$USER" != "root" ]
+    then
+    echo "ATTENTION!! This will 'DROP DATABASE $db_name' on this server if it exists"
+    echo "and (re-)create it from scratch with the data found in $file_name!"
+    echo "Depending on the size of the database this may take some time..."
+    read -p "Is this what you want? [y/N]" doit
+    if [ "${doit:0:1}" != "y" ] && [ "${doit:0:1}" != "Y" ]
+        then
+        echo "====> OK, aborting..."
+        exit 1
+    fi
+fi
+
+start_time=`date +%s`
+
+# (re-)create the database
+RESULT=`mysqlshow --user=root --password='R00tpass!' $db_name 2>/dev/null| grep -v Wildcard | grep -o $db_name`
+
+if [ "$RESULT" == "$db_name" ]
+    then
+    echo "====> DROPping and recreating database $db_name."
+    echo "DROP DATABASE $db_name" | mysql -uroot -p'R00tpass!' 2>/dev/null
+else
+    echo "====> Creating new database $db_name."
+fi
+
+echo "CREATE DATABASE $db_name DEFAULT CHARACTER SET UTF8 COLLATE utf8_unicode_ci" | mysql -uroot -p'R00tpass!' 2>/dev/null
+echo "GRANT ALL ON $db_name.* TO 'moodle_user'@'%'" | mysql -uroot -p'R00tpass!' 2>/dev/null
+
+# now import the data
+echo "====> Importing data for $db_name from $file_name. Please stand by..."
+LANG=C grep -Ev '^INSERT INTO `(.*?)(history|log)`' $file_name | mysql -uroot -p'R00tpass!' $db_name 2>/dev/null
+
+echo "====> SUCCESS! Uploading of $db_name done after $((`date +%s` - start_time)) seconds!"
+echo " "
+
+# finally hand over to localise the MIS data access and set user logins to manual
+#bash localise_database $db_name
+
