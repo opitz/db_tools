@@ -4,7 +4,7 @@
 # m.opitz@qmul.ac.uk | 2017-10-04
 
 echo "--------------------------------------------------------------------------"
-echo "====> Localise $1 database for development use - v.2.3 "
+echo "====> Localise $1 database for development use - v.2.4 "
 
 if [ $# -eq 0 ]
   then
@@ -37,6 +37,12 @@ else
 #       set all user accounts to manual login so no shiboleth is used/needed
         echo "====> setting all $1 user accounts to 'manual' login."
         echo "update mdl_user set auth = 'manual'" | mysql -uroot -p'R00tpass!' $1 2>/dev/null
+
+#	add a - hashed - keyword 'testing' for those users where the password has not been set
+        echo 'update mdl_user set password = "$2y$10$rT1fTlFceApa/EzhRry1XuoRGi8PgwybtkuwwEjj5w0UAM2qu7O0i" where password = "not cached"' | mysql -uroot -p'R00tpass!' $1 2>/dev/null
+
+#	remove absolute path in default landingpage
+        echo "update mdl_config_plugins set value = '/course/view.php?id=3730' where plugin = 'block_landingpage' and name = 'default'" | mysql -uroot -p'R00tpass!' $1 2>/dev/null
 
 #       finish
         echo "====> SUCCESS! Localising of $1 done after $((`date +%s` - start_time)) seconds!    "
