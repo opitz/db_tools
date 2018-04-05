@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 
 # script to (re-)load moodle database <databasename> into moodlesql server
-# m.opitz@qmul.ac.uk | 2017-010-18
+# m.opitz@qmul.ac.uk | 2018-04-05
+if [ ! -f /etc/db_tools.conf ]
+    then
+    echo "No configuration file found at /etc/db_tools.conf - aborting!"
+    exit 1
+fi
+. /etc/db_tools.conf
 
 echo "--------------------------------------------------------------------------"
 
@@ -53,22 +59,22 @@ fi
 start_time=`date +%s`
 
 # (re-)create the database
-RESULT=`mysqlshow --user=root --password='R00tpass!' $db_name 2>/dev/null| grep -v Wildcard | grep -o $db_name`
+RESULT=`mysqlshow --user=root --password=$rootpass $db_name 2>/dev/null| grep -v Wildcard | grep -o $db_name`
 
 if [ "$RESULT" == "$db_name" ]
     then
     echo "====> DROPping and recreating database $db_name."
-    echo "DROP DATABASE $db_name" | mysql -uroot -p'R00tpass!' 2>/dev/null
+    echo "DROP DATABASE $db_name" | mysql -uroot -p$rootpass 2>/dev/null
 else
     echo "====> Creating new database $db_name."
 fi
 
-echo "CREATE DATABASE $db_name DEFAULT CHARACTER SET UTF8 COLLATE utf8_unicode_ci" | mysql -uroot -p'R00tpass!' 2>/dev/null
-echo "GRANT ALL ON $db_name.* TO 'moodle_user'@'%'" | mysql -uroot -p'R00tpass!' 2>/dev/null
+echo "CREATE DATABASE $db_name DEFAULT CHARACTER SET UTF8 COLLATE utf8_unicode_ci" | mysql -uroot -p$rootpass 2>/dev/null
+echo "GRANT ALL ON $db_name.* TO 'moodle_user'@'%'" | mysql -uroot --p$rootpass 2>/dev/null
 
 # now import the data
 echo "====> Importing data for $db_name from $file_name. Please stand by..."
-LANG=C zgrep -Ev '^INSERT INTO `(.*?)(history|log)`' $file_name | mysql -uroot -p'R00tpass!' $db_name 2>/dev/null
+LANG=C zgrep -Ev '^INSERT INTO `(.*?)(history|log)`' $file_name | mysql -uroot -p$rootpass $db_name 2>/dev/null
 
 echo "====> SUCCESS! Uploading of $db_name done after $((`date +%s` - start_time)) seconds!"
 echo " "

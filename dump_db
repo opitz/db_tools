@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
 # script to (re-)load moodle database <databasename> into moodlesql server
-# m.opitz@qmul.ac.uk | 2017-09-11
+# m.opitz@qmul.ac.uk | 2018-04-05
+
+if [ ! -f /etc/db_tools.conf ]
+    then
+    echo "No configuration file found at /etc/db_tools.conf - aborting!"
+    exit 1
+fi
+. /etc/db_tools.conf
+
 
 echo "--------------------------------------------------------------------------"
 
@@ -39,7 +47,7 @@ fi
 start_time=`date +%s`
 
 # check if the database actually exists
-RESULT=`mysqlshow --user=root --password='R00tpass!' $db_name 2>/dev/null| grep -v Wildcard | grep -o $db_name`
+RESULT=`mysqlshow --user=root --password=$rootpass $db_name 2>/dev/null| grep -v Wildcard | grep -o $db_name`
 
 if [ "$RESULT" != "$db_name" ]
     then
@@ -47,7 +55,7 @@ if [ "$RESULT" != "$db_name" ]
     exit 1
 fi
 
-mysqldump -uroot -p'R00tpass!' $db_name > $file_name 2>/dev/null
+mysqldump -uroot -p$rootpass $db_name > $file_name 2>/dev/null
 
 echo "====> SUCCESS! Successfully dumped database '$db_name' to file '$file_name' after $((`date +%s` - start_time)) seconds!"
 echo " "
